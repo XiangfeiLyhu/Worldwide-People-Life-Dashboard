@@ -1,0 +1,542 @@
+---
+title: " Worldwide People Life Dashboard" 
+# author: "CID:02429075 "
+# date: "5 May, 2024"
+output: 
+  flexdashboard::flex_dashboard:
+    source_code: embed
+    vertical_layout: fill
+    theme: yeti
+runtime: shiny
+---
+
+``` {js}
+// Inverse the color of navigation bar.
+$('.navbar-inverse').removeClass('navbar-inverse').addClass('navbar-default');
+```
+
+```{r setup, include=FALSE}
+# Load necessary packages. 
+library(flexdashboard) # Dashboard package
+library(highcharter) # Interactive data visualizations
+library(viridis) # Color gradients
+library(tidyverse) # Metapackge
+library(countrycode) # Converting country names/codes
+library(DT) # Displaying data tables
+library(crosstalk) # Provides interactivity for HTML widgets
+library(plotly) # Interactive data visualizations
+library(dplyr)
+library(tibble)
+library(gridExtra)
+library(shiny)
+```
+
+```{r}
+# Define a new custom theme for Highcharts
+new_custom_theme <- hc_theme(
+  colors = c('#2b908f', '#f45b5b', '#90ee7e', '#7798BF', '#aaeeee', '#ff0066', '#eeaaee', '#55BF3B', '#DF5353', '#7798BF', '#aaeeee'),
+  chart = list(
+    backgroundColor = "#FAFAFA",
+    plotBackgroundColor = "transparent",
+    plotBorderColor = "#cccccc",
+    plotBorderWidth = 1
+  ),
+  title = list(
+    style = list(
+      color = '#274e13',
+      fontSize = "16px",
+      fontFamily = "Verdana, sans-serif"
+    )
+  ),
+  subtitle = list(
+    style = list(
+      color = '#4863A0',
+      fontSize = "14px",
+      fontFamily = "Verdana, sans-serif"
+    )
+  ),
+  xAxis = list(
+    gridLineColor = "#e6e6e6",
+    gridLineWidth = 1,
+    labels = list(
+      style = list(
+        color = "#333",
+        fontSize = "12px"
+      )
+    ),
+    lineColor = "#a6a6a6",
+    tickColor = "#a6a6a6",
+    title = list(
+      style = list(
+        color = "#123456",
+        fontWeight = 'bold'
+      )
+    )
+  ),
+  yAxis = list(
+    gridLineColor = "#e6e6e6",
+    labels = list(
+      style = list(
+        color = "#333",
+        fontSize = "12px"
+      )
+    ),
+    lineColor = "#a6a6a6",
+    minorGridLineColor = "#e6e6e6",
+    tickWidth = 1,
+    tickColor = "#a6a6a6",
+    title = list(
+      style = list(
+        color = "#123456",
+        fontWeight = 'bold'
+      )
+    )
+  ),
+  legend = list(
+    backgroundColor = "rgba(0, 0, 0, 0.05)",
+    itemStyle = list(
+      color = '#333333',
+      fontSize = "10px"
+    ),
+    itemHoverStyle = list(
+      color = '#000'
+    ),
+    itemHiddenStyle = list(
+      color = '#cccccc'
+    )
+  ),
+  credits = list(
+    enabled = FALSE
+  ),
+  tooltip = list(
+    style = list(
+      color = '#000000',
+      fontWeight = 'bold'
+    )
+  )
+)
+
+
+
+```
+
+
+```{r include=FALSE}
+
+# Read in data. 
+data1 <- read.csv('Timeuse.csv')
+
+happiness_data <- read.csv('share-of-people-who-say-they-are-happy.csv') %>% 
+  rename("Country" = "Entity",
+         "Happiness" = "Happiness..Happy..aggregate.") %>% 
+  select(-Code)
+names(happiness_data) <- tolower(names(happiness_data))
+
+annual_working_data <- read.csv('annual-working-hours-per-worker.csv') %>% 
+  rename("Country" = "Entity",
+         "ave_working_hour" = "Average.annual.working.hours.per.worker") %>%
+  select(-Code)
+names(annual_working_data) <- tolower(names(annual_working_data))
+
+anxiety_data <- read.csv("share-who-report-lifetime-anxiety-or-depression.csv") %>% 
+  rename("Country" = "Entity",
+         "Anxiety" = "Share...Question..mh7a...Have.been.anxious.depressed...Answer..Yes...Gender..all...Age.group..all") %>% 
+  select(-Code)
+names(anxiety_data) <- tolower(names(anxiety_data))
+anxiety_data[anxiety_data$country == "United States", "country"] = "United States of America"
+
+anxiety_gap_data <- read.csv("anxiety-disorders-treatment-gap.csv") %>%
+  select(-Code) %>%
+  rename("Country" = "Entity",
+         "potentially_adequate_treatment_conditional" = "Potentially.adequate.treatment..conditional",
+         "other_treatments_conditional" = "Other.treatments..conditional",
+         "untreated_conditional" = "Untreated..conditional") %>%
+  select(-Year)
+names(anxiety_gap_data) <- tolower(names(anxiety_gap_data))
+
+anxiety_age_data <- read.csv("anxiety-disorders-prevalence-by-age.csv") %>%
+  select(-Code) %>%
+  select(-Anxiety.disorders..share.of.population....Sex..Both...Age..All.ages) %>%
+  select(-Anxiety.disorders..share.of.population....Sex..Both...Age..Age.standardized) %>%
+  
+  rename("5-14_age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..5.14.years",
+         "15-19_age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..15.19.years",
+         "20-24_age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..20.24.years",
+         "25-29_age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..25.29.years",
+         "30-34_age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..30.34.years",
+         "35-39_age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..35.39.years",
+         "40-44_age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..40.44.years",
+         "45-49_age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..45.49.years",
+         "50-54_age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..50.54.years",
+         "55-59_age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..55.59.years",
+         "60-64_age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..60.64.years",
+         "65-69_age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..65.69.years",
+         "70+age" = "Anxiety.disorders..share.of.population....Sex..Both...Age..70..years",
+         "country" = "Entity",
+         "year" = "Year")
+
+
+life_exp_data <- read.csv("life-expectancy.csv") %>%
+  select(-Code) %>%
+  rename( "Country" = "Entity",
+          "life_exp" = "Period.life.expectancy.at.birth...Sex..all...Age..0") 
+names(life_exp_data) <- tolower(names(life_exp_data))
+life_exp_data[life_exp_data$country == "United States", "country"] = "United States of America"
+
+```
+
+
+
+
+<style>
+.colored {
+  background-color: #FAFAFA;
+}
+</style>
+
+Time Use 
+========================================================================
+
+Row {data-width=600 .colored }
+-----------------------------------------------------------------------
+
+
+### Worldwide Time use {.no-title}
+
+```{r}
+
+# Create a tibble grouped by country and category
+country_category_time <- data1 %>%
+  group_by(Country, Category) 
+  
+
+# Create an interactive bar plot
+highchart() %>%
+  hc_add_series(country_category_time, hcaes(x = Country, y = Time..minutes., group = Category), type = "bar") %>%
+  hc_tooltip(borderWidth = 1.5, pointFormat = paste("Category: <b>{point.Category}</b> <br> Total Time: <b>{point.y}</b>")) %>%
+  hc_title(text = "Total Time by Country and Category") %>%
+  hc_subtitle(text = "Summary of activity time") %>%
+  hc_xAxis(categories = unique(data1$Country),
+           labels = list(step = 1),
+           min = 0, max = 15,
+           scrollbar = list(enabled = TRUE)) %>%
+  hc_yAxis(title = list(text = "Total Time (minutes)"), min =0, max=1500) %>%
+  hc_plotOptions(bar = list(stacking = "normal", 
+                            pointPadding = 0.1, groupPadding = 0.1, borderWidth = 0.5)) %>%
+  hc_credits(enabled = TRUE, text = "Data source: OECD Time use Database, Gender data Portal.", position = list(align = "center", verticalAlign = "bottom")) %>%
+  hc_add_theme(new_custom_theme)
+
+
+
+```
+
+
+Columns {data-width=600 .colored }
+-----------------------------------------------------------------------
+
+### Trends in reported happiness by country {.no-title}
+```{r}
+selectInput('time_use_country', 
+            'Country', 
+            choices = unique(happiness_data$country), 
+            selected = happiness_data$country[1])
+
+# Create a tibble for our line plot. 
+
+renderHighchart({
+  happy_tibble <- reactive({
+  subset(happiness_data, country == input$time_use_country)})
+
+# Create line plot
+highchart() %>% 
+    hc_add_series(happy_tibble(), hcaes(x = year, y = happiness), type = "line", color = "#4863A0") %>%
+    hc_tooltip(crosshairs = TRUE, borderWidth = 1.5, headerFormat = "", pointFormat = paste("Year: <b>{point.x}</b> <br>", "Happiness: <b>{point.y}</b>")) %>%
+    hc_title(text = paste("Trends in Reported Happiness in", input$time_use_country)) %>% 
+    hc_subtitle(text = "Data source: Integrated Values Surveys (2022)") %>%
+    hc_xAxis(title = list(text = "Year")) %>%
+    hc_yAxis(title = list(text = "Average Happiness"),
+             allowDecimals = FALSE) %>%
+  hc_credits(enabled = TRUE, text = "Data source: Integrated Values Surveys (2022)    ", position = list(align = "center", verticalAlign = "top")) %>%
+    hc_add_theme(new_custom_theme)
+})
+
+
+
+```
+
+
+### Working hours {.no-title}
+```{r}
+
+selectInput('working_hours_country', 
+            'Country', 
+            choices = unique(annual_working_data$country), 
+            selected = annual_working_data$country[1])
+
+renderHighchart({
+  working_tibble <- reactive({
+  subset(annual_working_data, country == input$working_hours_country)})
+
+# Create line plot
+highchart() %>% 
+    hc_add_series(working_tibble(), hcaes(x = year, y = ave_working_hour), type = "line", color = "#4863A0") %>%
+    hc_tooltip(crosshairs = TRUE, borderWidth = 1.5, headerFormat = "", pointFormat = paste("Year: <b>{point.x}</b> <br>","Country: <b>{point.country}</b><br>", "WorkingHours: <b>{point.y}</b>")) %>%
+    hc_title(text = paste("Trends in working hours in", input$working_hours_country)) %>% 
+    hc_subtitle(text = "Data source: Huberman & Minns (2007) and PWT 9.1 (2019)") %>%
+    hc_xAxis(title = list(text = "Year")) %>%
+    hc_yAxis(title = list(text = "Average working hours"),
+             allowDecimals = FALSE) %>%
+  hc_credits(enabled = TRUE, text = "Data source: Huberman & Minns (2007) and PWT 9.1 (2019)", position = list(align = "center", verticalAlign = "top")) %>%
+    hc_add_theme(new_custom_theme)
+})
+
+
+```
+
+Mental Health
+=======================================================================
+
+
+SideBar  {.sidebar}
+-----------------------------------------------------------------------
+
+```{r}
+anx_age_tibble <- anxiety_age_data %>%
+  pivot_longer(cols = c(`5-14_age`, `15-19_age`, `20-24_age`, `25-29_age`, `30-34_age`, `35-39_age`, `40-44_age`, `45-49_age`, `50-54_age`, `55-59_age`, `60-64_age`, `65-69_age`, `70+age`), names_to = "age", values_to = "value") %>%
+  group_by(year, age)
+
+selectInput('anxiety_country', 
+            'Country for anxiety by age', 
+            choices = unique(anx_age_tibble$country), 
+            selected = anx_age_tibble$country[1])
+
+############################################################
+# Create a tibble for continent and sex.
+an_gap_tibble <-  anxiety_gap_data %>%
+  filter(country %in% c("High-income countries", "Upper-middle-income countries", "Lower-middle-income countries"))
+
+# Reshape data to long format for pie chart
+long_data <- an_gap_tibble %>%
+  pivot_longer(cols = c(potentially_adequate_treatment_conditional, other_treatments_conditional, untreated_conditional), names_to = "treatment_res", values_to = "percentage")
+
+#long_data <- subset(long_data, country == "High-income countries")
+
+selectInput("income_level",
+            "Type for the country:",
+            choices = unique(long_data$country),
+            selected =long_data$country[4])
+
+
+```
+
+
+Row {.tabset .tabset-fade data-width=500 .colored }
+-----------------------------------------------------------------------
+
+### Anxiety by age 
+```{r}
+# First, reshape the data from wide to long format
+anx_age_tibble <- anxiety_age_data %>%
+  pivot_longer(cols = c(`5-14_age`, `15-19_age`, `20-24_age`, `25-29_age`, `30-34_age`, `35-39_age`, `40-44_age`, `45-49_age`, `50-54_age`, `55-59_age`, `60-64_age`, `65-69_age`, `70+age`), names_to = "age", values_to = "value") %>%
+  group_by(year, age)
+
+#selectInput('anxiety_country', 
+            #'Country', 
+            #choices = unique(anx_age_tibble$country), 
+            #selected = anx_age_tibble$country[1])
+
+
+# Pick colors for the graph
+age_color <- rev(plasma(13))
+
+renderHighchart({
+  anx_age_subtibble <- reactive({
+  subset(anx_age_tibble, country == input$anxiety_country)})
+  
+  # Create the line plot
+highchart() %>% 
+  hc_add_series(anx_age_subtibble(), hcaes(x = year, y = value, group = age), type="line", color = age_color) %>%
+  hc_tooltip(crosshairs = TRUE, borderWidth = 1.5, headerFormat = "", pointFormat = paste("Year: <b>{point.x}</b> <br>","Age Group: <b>{point.age}</b><br>", "Persentage: <b>{point.y}%</b>")) %>%
+  hc_title(text = "Percentage of anxiety by Age Group and Year") %>%
+  hc_subtitle(text = paste("Trends in axiety in", input$anxiety_country)) %>%
+  hc_xAxis(title = list(text = "Year")) %>%
+  hc_yAxis(title = list(text = "Persentage"),
+           allowDecimals = FALSE
+           ) %>%
+  hc_credits(enabled = TRUE, text = "Data source: IHME, Global Burden of Disease (2019)  ", position = list(align = "center", verticalAlign = "bottom")) %>%
+  hc_add_theme(new_custom_theme)
+})
+  
+```
+
+### Treatment condition by country type
+
+```{r}
+
+category = c("High-income countries", "Upper-middle-income countries", "Lower-middle-income countries")
+
+renderHighchart({
+  long_data_tibble <- reactive({
+    subset(long_data, country == input$income_level)
+  })
+  highchart() %>%
+    hc_plotOptions(series = list(stacking = "percent")) %>%
+    hc_add_series(data = long_data_tibble(), hcaes(x = treatment_res, y = percentage), type = "pie") %>%
+    hc_xAxis(categories = category, label = list()) %>%
+    hc_yAxis(title = list(text = "Percentage"), max = 100) %>%
+    hc_legend(enabled = TRUE) %>%
+    hc_tooltip(pointFormat =  paste( "Percentage: <b>{point.y}%</b>")) %>%
+    hc_title(text = "Treatment and Untreated Rates by Country Income Level in 2017") %>%
+    hc_subtitle(text = "Percentage Pie Chart") %>%
+    hc_credits(enabled = TRUE, text = "Data source: World Mental Health surveys (2001–2015) ", position = list(align = "center", verticalAlign = "bottom")) %>%
+    hc_add_theme(new_custom_theme)
+  
+})
+
+```
+
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Worldwide anxiety {.no-title}
+```{r}
+highchart() %>% 
+  hc_add_series_map(worldgeojson,
+                       anxiety_data,
+                       value = "anxiety",
+                       joinBy = c("name", "country"),
+                       name = "Anxiety") %>% 
+  hc_tooltip(borderWidth = 1.5, headerFormat = "", valueSuffix = '% ') %>%
+  hc_colorAxis(stops = color_stops()) %>% 
+  hc_title(text = paste("Worldwide anxiety data in Year 2020")) %>%
+  hc_credits(enabled = TRUE, text = "Data source: Wellcome Global Monitor (2021) ", position = list(align = "center", verticalAlign = "bottom")) %>%
+  hc_add_theme(hc_theme_flat())
+
+ 
+```
+ 
+
+
+Life Expectancy
+=======================================================================
+
+SideBar  {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+selectInput('world_life_exp_year', 
+            'Year', 
+            choices = unique(life_exp_data$year), 
+            selected = life_exp_data$year[1])
+selectInput('world_life_exp_country', 
+            'Country', 
+            choices = unique(life_exp_data$country), 
+            selected = life_exp_data$country[1])
+
+
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Worldwide Life Expectancy 
+```{r}
+
+
+renderHighchart({
+    life_exp_tibble <- reactive({
+    subset(life_exp_data, year == input$world_life_exp_year)
+  })
+    
+    highchart() %>% 
+  hc_add_series_map(worldgeojson,
+                    life_exp_tibble(),
+                    value = "life_exp",
+                    joinBy = c("name", "country"),
+                    name = "Life Expectancy") %>% 
+  hc_tooltip(borderWidth = 1.5, valueSuffix = '') %>%
+  hc_colorAxis(stops = color_stops()) %>% 
+  hc_title(text = paste("Worldwide life expectancy data in Year ", input$world_life_exp_year)) %>%
+  hc_credits(enabled = TRUE, text = "Data source: UN WPP (2022); HMD (2023); Zijdeman et al. (2015); Riley (2005)  ", position = list(align = "center", verticalAlign = "bottom")) %>%
+  hc_add_theme(hc_theme_flat())
+
+})
+
+```
+
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Life Expectancy Trend
+```{r}
+renderHighchart({
+    life_exp_tibble1 <- reactive({
+    subset(life_exp_data, country == input$world_life_exp_country)
+  })
+    
+# Create line plot.
+highchart() %>% 
+    hc_add_series(life_exp_tibble1(), hcaes(x = year, y = life_exp), type = "line") %>%
+    hc_tooltip(crosshairs = TRUE, borderWidth = 1.5, headerFormat = "", pointFormat = paste("Year: <b>{point.x}</b> <br> Life Expectancy: <b>{point.y}</b>")) %>%
+    hc_title(text = paste("Life Expectancy by year in", input$world_life_exp_country)) %>% 
+    hc_subtitle(text = "1950-2022") %>%
+    hc_xAxis(title = list(text = "Year")) %>%
+    hc_yAxis(title = paste("Life Expectancy in", input$world_life_exp_country),
+             allowDecimals = FALSE) %>%
+    hc_legend(enabled = FALSE) %>% 
+  hc_credits(enabled = TRUE, text = "Data source: Same source with left plot", position = list(align = "center", verticalAlign = "bottom")) %>%
+  hc_add_theme(hc_theme_flat())
+
+})
+
+```
+
+
+
+About {data-icon="fa-info-circle"}
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### { .colored }
+
+**Mental Health Hotlines:**
+
+To find Mental Health hotlines in the UK, please view:
+
+* https://www.nhs.uk/nhs-services/mental-health-services/
+
+<br>
+
+
+
+
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### { .colored }
+
+**References:**  
+
+The data set used to create the dashboard can be found at:   
+
+* https://www.kaggle.com/russellyates88/suicide-rates-overview-1985-to-2016 
+
+and was compiled from data from the following sources: 
+
+* Wellcome Global Monitor (2021) – processed by Our World in Data. Retrieved from https://ourworldindata.org/mental-health
+
+* Our World in Data based on Huberman & Minns (2007) and PWT 9.1 (2019) – processed by Our World in Data. Retrieved from https://ourworldindata.org/working-hours
+
+* Data source: OECD Time use Database, Gender data Portal. Retrieved from https://docs.google.com/spreadsheets/d/1Cmav9S-bNUd-54HHXPRD1x-k3nDCceJPH_QXwQb1beU/edit#gid=2076567820
+
+* Integrated Values Surveys (2022). Retrieved from https://ourworldindata.org/grapher/share-of-people-who-say-they-are-happy?tab=chart
+
+* IHME, Global Burden of Disease (2020) – processed by Our World in Data. Retrieved from https://ourworldindata.org/grapher/anxiety-disorders-prevalence-by-age
+
+* World Mental Health surveys (2001–2015). Retrieved from https://ourworldindata.org/grapher/anxiety-disorders-treatment-gap
+
+

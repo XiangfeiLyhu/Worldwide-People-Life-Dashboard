@@ -1,0 +1,55 @@
+---
+title: "README: Worldwide People Life Dashboard"
+output: html_document
+---
+
+## Project Overview
+
+This repository contains the data and R Markdown scripts used to create the "Worldwide People Life Dashboard". This interactive dashboard is designed to explore various aspects of global human activities including time use, mental health analytics, and changes in life expectancy over decades. It utilizes multiple datasets to provide a comprehensive view on how people spend their time worldwide and the trends in annual working hours per worker over a span of more than 80 years.
+
+## Data
+
+The dashboard is built using several datasets from "Our World in Data". Below is a list of datasets utilized:
+
+- `annual-worker.csv`: Contains data on annual working hours per worker across different countries.
+- `anxiety-by-age.csv`: Provides details on the prevalence of anxiety across different age groups.
+- `anxiety-males.csv`: Focuses on anxiety statistics specifically for males across various regions.
+- `anxiety-t-gap.csv`: Describes the treatment gap in anxiety cases in various countries.
+- `life-expectancy.csv`: Includes data on life expectancy trends worldwide from 1751 to 2021.
+- `share-of-happy.csv`: Records the share of people who report being happy across different countries from 1993 to 2022.
+- `share-w-session.csv`: Additional data related to wellness sessions.
+- `Timeuse.csv`: Detailed records on how people in different countries allocate their time to various activities.
+
+## Source Code
+
+The source code for the dashboard is contained in `DS_CW2_new.Rmd`. This R Markdown file includes all necessary code to reproduce the dashboard.
+
+## Running the Dashboard
+
+To run the dashboard, you will need to have R and RStudio installed, along with the following R packages: `flexdashboard`, `highcharter`, `viridis`, `tidyverse`, `countrycode`, `DT`, `crosstalk`, `plotly`, `shiny`, and `gridExtra`. You can install these packages using the following R command:
+
+```r
+install.packages(c("flexdashboard", "highcharter", "viridis", "tidyverse", "countrycode", "DT", "crosstalk", "plotly", "shiny", "gridExtra"))
+```
+
+Once the packages are installed, you can run the dashboard by opening the DS_CW2_new.Rmd file in RStudio and knitting it, or by using the following command in R:
+
+```r
+rmarkdown::run("DS_CW2_new.Rmd")
+```
+
+## License
+This project is open source and available under the MIT License.
+
+## Contact
+
+For any further queries or suggestions, feel free to contact  at.
+
+
+
+
+
+
+
+
+
